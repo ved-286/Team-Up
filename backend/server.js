@@ -5,7 +5,7 @@ import { Server } from "socket.io";
 import connectDB from "./config/db.js";
 import { createServer } from "http";
 import AuthRoutes from "./routes/AuthRoutes.js";
-
+import { protect } from "./middlewares/authMiddleware.js";
 dotenv.config();
 const PORT = process.env.PORT || 5000;
 
