@@ -1,6 +1,8 @@
 import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -24,8 +26,14 @@ export const register = async (req, res) => {
 
         res.status(201).json({
             message: "User created successfully",
-            user: newUser,
+           
             token,
+             user: {
+    id: newUser._id,
+    username: newUser.username,
+    email: newUser.email,
+    role: newUser.role,
+  },
         });
     } catch (error) {
         res.status(500).json({ message: "Internal server error" });
@@ -47,7 +55,12 @@ export const login = async (req , res) => {
     const token = jwt.sign({ userId: user._id}, JWT_SECRET,{ expiresIn: "7d" });
     res.status(200).json({
         message: "Login successful",
-        user: user,
+        user: {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+        },
         token,
     });
    
