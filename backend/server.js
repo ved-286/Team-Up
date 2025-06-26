@@ -6,6 +6,10 @@ import connectDB from "./config/db.js";
 import { createServer } from "http";
 import AuthRoutes from "./routes/AuthRoutes.js";
 import { protect } from "./middlewares/authMiddleware.js";
+import ProjectRoutes from "./routes/ProjectRoutes.js";
+import TaskRoutes from "./routes/TaskRoutes.js";
+
+
 dotenv.config();
 const PORT = process.env.PORT || 5000;
 
@@ -38,6 +42,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", AuthRoutes);
+app.use("/api/projects", ProjectRoutes);
+app.use("/api/tasks", TaskRoutes); 
 
 
 server.listen(PORT, () => {
