@@ -6,6 +6,6 @@ const router = express.Router();
 
 router.post('/create',protect ,createProject);
 router.get('/', protect ,getProjects);
-router.put('/:projectId/collaborators', protect, addCollaborater);
+router.post('/:projectId/collaborators', protect, addCollaborater);
 
 export default router;

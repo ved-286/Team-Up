@@ -1,4 +1,4 @@
-import Project from '../models/ProjectModel.js'
+import {Project} from '../models/ProjectModel.js';
 
 export  const checkAccess = async ({projectId , userId}) =>{
     const project = await Project.findById(projectId);

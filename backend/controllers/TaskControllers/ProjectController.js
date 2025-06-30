@@ -1,4 +1,5 @@
 import { Project } from "../../models/ProjectModel.js"
+import User from "../../models/userModel.js";
 
 
 export const createProject = async (req, res) => {
