@@ -24,7 +24,7 @@ const Login = () => {
     try{
       const {token , user} = await loginUser(form);
     login({token, user});
-      navigate('/');
+      navigate('/dashboard');
     }catch(error) {
       console.error("Login failed:", error);
       alert("Login failed. Please check your credentials.");

@@ -1,39 +1,26 @@
-import React, { useEffect } from "react";
+// File: src/App.jsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
-import socket from "./services/socket";
+import Dashboard from "./pages/Dashboard";
+import Chat from "./pages/chat/Chat.jsx";
+import Project from "./pages/Project.jsx";
+import Settings from "./pages/Settings.jsx";
+import Notifications from "./pages/Notifications";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { useAuth } from "./contexts/authContext";
+import CreateProjectModel from "./components/CreateProjectModel.jsx";
 
 const App = () => {
-  useEffect(() => {
-    socket.on("connect", () => {
-      console.log("Connected to server", socket.id);
-
-      socket.on("disconnect", () => {
-        console.log("Disconnected from server");
-      });
-
-      return () => {
-        socket.disconnect(); // Clean up on unmount
-      };
-    });
-  }, []);
-
   return (
     <BrowserRouter>
       <Routes>
-        {/* public routes */}
+        {/* Public routes */}
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-         <Route path="/" element={<Home />} />
-        <Route path="*" element={<Home />} />
-       
 
-        {/* priveted routes */}
+        {/* Protected Dashboard routes with nested children */}
         <Route
           path="/dashboard"
           element={
@@ -41,9 +28,19 @@ const App = () => {
               <Dashboard />
             </ProtectedRoute>
           }
-        />
+        >
+          {/* Index route - default page when visiting /dashboard */}
+          <Route index element={<Chat />} />
 
-       
+          {/* Nested routes */}
+          <Route path="chat" element={<Chat />} />
+          <Route path="projects" element={<Project />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="notifications" element={<Notifications />} />
+        </Route>
+
+        {/* Wildcard */}
+        <Route path="*" element={<Home />} />
       </Routes>
     </BrowserRouter>
   );
