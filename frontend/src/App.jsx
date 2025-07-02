@@ -10,6 +10,7 @@ import Settings from "./pages/Settings.jsx";
 import Notifications from "./pages/Notifications";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreateProjectModel from "./components/CreateProjectModel.jsx";
+import ProjectDetailes from "./pages/ProjectDetailes.jsx";
 
 const App = () => {
   return (
@@ -35,6 +36,7 @@ const App = () => {
           {/* Nested routes */}
           <Route path="chat" element={<Chat />} />
           <Route path="projects" element={<Project />} />
+          <Route path="projects/:projectId" element={<ProjectDetailes />} />
           <Route path="settings" element={<Settings />} />
           <Route path="notifications" element={<Notifications />} />
         </Route>

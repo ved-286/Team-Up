@@ -1,15 +1,16 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import Avatar from "./Avatar";
 
 const ProjectCard = ({ project }) => {
   const navigate = useNavigate();
   const ownerName = project.owner.username || project.owner.email;
-  const ownerInitial = ownerName[0]?.toUpperCase();
+  // const ownerInitial = ownerName[0]?.toUpperCase();
 
   return (
     <div
       className="border bg-[#161B22] border-[#2D333B] text-[#EDEDED] hover:shadow-lg hover:scale-[1.02] transition-all h-50 rounded-lg p-5 cursor-pointer duration-200 flex flex-col justify-between"
-      onClick={() => navigate(`/projects/${project._id}`)}
+      onClick={() => navigate(`/dashboard/projects/${project._id}`)}
     >
       <div>
         <h2 className="text-xl font-semibold mb-1">{project.title}</h2>
@@ -21,7 +22,7 @@ const ProjectCard = ({ project }) => {
         </span>
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg shadow">
-            {ownerInitial}
+            <Avatar email={project.owner.email} size={36} />
           </div>
           <span className="text-sm font-medium truncate max-w-[100px]">{ownerName}</span>
         </div>

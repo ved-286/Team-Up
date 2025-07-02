@@ -4,11 +4,15 @@ import User from "../../models/userModel.js";
 
 export const createProject = async (req, res) => {
     try{
-        const { title , description} = req.body;
+        const { title , description, collaborators=[]} = req.body;
+
+        const filteredCollaborators = collaborators.filter((id) => id !== req.user.userId);
+
         const project = await Project.create({
             title: title,
             description: description,
             owner: req.user.userId,
+            collaborators: filteredCollaborators,
         })
 
         if (!project) {
@@ -74,6 +78,23 @@ export const addCollaborater = async (req, res) => {
 
     }catch(error) {
         console.error("Error adding collaborator:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+export const getProjectById = async (req, res) => {
+    const { projectId } = req.params;
+    try {
+        const project = await Project.findById(projectId)
+            .populate("owner", "username email")
+            .populate("collaborators", "username email");
+        if (!project) {
+            return res.status(404).json({ message: "Project not found" });
+        }
+        return res.status(200).json({ message: "Project fetched successfully", project });
+    }   
+    catch (error) {
+        console.error("Error fetching project by ID:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 }

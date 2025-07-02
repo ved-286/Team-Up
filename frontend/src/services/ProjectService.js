@@ -29,3 +29,13 @@ export const createProject = async (projectData) => {
     throw error;
   }
 };
+
+export const getProjectById = async (projectId) => {
+  try {
+    const res = await axios.get(`/api/projects/${projectId}`, getAuthHeaders());
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching project by ID:", error);
+    throw error;
+  }
+}

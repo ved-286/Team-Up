@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../contexts/authContext"; // adjust if path differs
 import { LogOut, Folder, Bell, MessageCircle, Settings } from "lucide-react";
-
+import Avatar from "./Avatar.jsx";
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -47,6 +47,7 @@ hover:bg-[#161B22] h-screen w-64 flex flex-col justify-between px-4 py-6 shadow-
 
       {/* User Section */}
       <div className="border-t border-gray-700 pt-6 text-sm">
+        <Avatar email={user.email} size={36} />
         <p className="text-gray-400">Logged in as:</p>
         <p className="font-semibold truncate">{user?.username || "User Name"}</p>
         <p className="text-gray-500 text-xs truncate">{user?.email}</p>
