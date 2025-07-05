@@ -8,7 +8,7 @@ const router = express();
 
 
 router.post('/create', protect ,createTask)
-router.get('/:projectId', protect,getTasks)
+router.get('/:projectId/tasks', protect,getTasks)
 router.get('/:taskId', protect,getTaskById)
 router.put('/update/:taskId', protect,updateTask)
 router.delete('/delete/:taskId', protect,deleteTask)

@@ -39,3 +39,13 @@ export const getProjectById = async (projectId) => {
     throw error;
   }
 }
+
+export const getTasksByProjectId = async (projectId) => {
+  try {
+    const res = await axios.get(`/api/tasks/${projectId}/tasks`, getAuthHeaders());
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching tasks by project ID:", error);
+    throw error;
+  }
+}
