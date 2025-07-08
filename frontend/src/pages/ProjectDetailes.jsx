@@ -9,6 +9,7 @@ import {
 import { useAuth } from "../contexts/authContext";
 import Avatar from "../components/Avatar";
 import CreateTaskModal from "../components/CreateTaskModel";
+import { deleteTask } from "../services/Taskservice";
 
 const STATUS_COLORS = {
   "To Do": "from-pink-500 to-pink-700",
@@ -27,15 +28,18 @@ const STATUS_LABEL_TO_VALUE = {
 const ProjectDetails = () => {
   const { projectId } = useParams();
   const { token } = useAuth();
+
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskStatus, setTaskStatus] = useState(null);
-  const [selectedTask, setSelectedTask] = useState(null); // for edit
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [viewTask, setViewTask] = useState(null);
+  const [deletingTaskId, setDeletingTaskId] = useState(null); // NEW: for feedback on delete
 
-  // Load Project
+  // Fetch project and tasks
   useEffect(() => {
     const fetchProject = async () => {
       try {
@@ -66,23 +70,54 @@ const ProjectDetails = () => {
     return tasks.filter((task) => task.status === value);
   };
 
- const handleTaskCreated = (newTask) => {
-  // If assignedTo is just an ID, find the full user object from collaborators
-  if (newTask.assignedTo && typeof newTask.assignedTo === "string") {
-    const fullUser = project.collaborators?.find(
-      (user) => user._id === newTask.assignedTo
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    try {
+      setDeletingTaskId(taskId); // show loading gesture
+      await deleteTask(taskId, token);
+      setTasks((prev) => prev.filter((task) => task._id !== taskId));
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+      alert("Failed to delete task. Please try again.");
+    } finally {
+      setDeletingTaskId(null);
+    }
+  };
+
+  const handleTaskUpdated = (updatedTask) => {
+    if (
+      updatedTask.assignedTo &&
+      typeof updatedTask.assignedTo === "string" &&
+      project?.collaborators
+    ) {
+      const fullUser = project.collaborators.find(
+        (user) => user._id === updatedTask.assignedTo
+      );
+      if (fullUser) updatedTask.assignedTo = fullUser;
+    }
+
+    setTasks((prev) =>
+      prev.map((task) => (task._id === updatedTask._id ? updatedTask : task))
     );
 
-    if (fullUser) {
-      newTask.assignedTo = fullUser; // 👈 overwrite with full object
+    setShowTaskModal(false);
+    setSelectedTask(null);
+  };
+
+  const handleTaskCreated = (newTask) => {
+    if (newTask.assignedTo && typeof newTask.assignedTo === "string") {
+      const fullUser = project.collaborators?.find(
+        (user) => user._id === newTask.assignedTo
+      );
+      if (fullUser) {
+        newTask.assignedTo = fullUser;
+      }
     }
-  }
 
-  setTasks((prev) => [...prev, newTask]);
-  setShowTaskModal(false);
-  setSelectedTask(null);
-};
-
+    setTasks((prev) => [...prev, newTask]);
+    setShowTaskModal(false);
+    setSelectedTask(null);
+  };
 
   if (loading) return <div className="text-gray-400">Loading...</div>;
   if (!project) return <div className="text-red-500">Project not found</div>;
@@ -143,31 +178,48 @@ const ProjectDetails = () => {
                   {getTaskByStatus(status).map((task) => (
                     <div
                       key={task._id}
-                      className="bg-white/10 p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200 cursor-pointer"
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setTaskStatus(task.status); // maintain status
-                        setShowTaskModal(true);
-                      }}
+                      className="bg-white/10 p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200 group relative"
                     >
-                      <h3 className="text-lg font-semibold">{task.title}</h3>
-                      <div className="mt-2 flex items-center space-x-2">
+                      <h3 className="text-lg font-semibold mb-1">
+                        {task.title}
+                      </h3>
+                      <div className="flex items-center space-x-2 text-sm text-blue-300">
                         <Avatar email={task.assignedTo?.email} size={24} />
-                        <span className="text-sm text-blue-300">
-                          {task.assignedTo?.username || "Unassigned"}
-                        </span>
+                        <span>{task.assignedTo?.username || "Unassigned"}</span>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex space-x-2">
+                        <button
+                          className="text-yellow-400 hover:text-yellow-300"
+                          title="Edit"
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setTaskStatus(task.status);
+                            setShowTaskModal(true);
+                          }}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="text-red-400 hover:text-red-300"
+                          title="Delete"
+                          onClick={() => handleDeleteTask(task._id)}
+                        >
+                          {deletingTaskId === task._id ? "⏳" : "🗑"}
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Add Task Button */}
+              {/* Add Task */}
               <button
                 onClick={() => {
                   setShowTaskModal(true);
                   setTaskStatus(STATUS_LABEL_TO_VALUE[status]);
-                  setSelectedTask(null); // reset if it's create mode
+                  setSelectedTask(null);
                 }}
                 className="mx-4 my-3 py-2 px-4 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-300 font-semibold shadow hover:bg-blue-500/30 hover:text-white hover:shadow-lg transition-all duration-200 flex items-center gap-2"
               >
@@ -178,18 +230,28 @@ const ProjectDetails = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       {showTaskModal && (
         <CreateTaskModal
           onClose={() => {
             setShowTaskModal(false);
             setSelectedTask(null);
           }}
+          mode={selectedTask ? "edit" : "create"}
           onTaskCreated={handleTaskCreated}
+          onTaskUpdated={handleTaskUpdated}
           projectId={project._id}
           status={taskStatus}
-          mode={selectedTask ? "edit" : "create"}
           initialData={selectedTask}
+        />
+      )}
+
+      {viewTask && (
+        <CreateTaskModal
+          mode="view"
+          onClose={() => setViewTask(null)}
+          projectId={project._id}
+          initialData={viewTask}
         />
       )}
     </div>
