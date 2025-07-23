@@ -8,6 +8,7 @@ import AuthRoutes from "./routes/AuthRoutes.js";
 import { protect } from "./middlewares/authMiddleware.js";
 import ProjectRoutes from "./routes/ProjectRoutes.js";
 import TaskRoutes from "./routes/TaskRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js"; // Importing chat routes
 
 
 dotenv.config();
@@ -44,6 +45,7 @@ app.use(express.json());
 app.use("/api/auth", AuthRoutes);
 app.use("/api/projects", ProjectRoutes);
 app.use("/api/tasks", TaskRoutes); 
+app.use("/api/chats", chatRoutes); // Assuming you have a chatRoutes.js file
 
 
 server.listen(PORT, () => {
