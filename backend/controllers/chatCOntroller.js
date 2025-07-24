@@ -85,6 +85,18 @@ export const createGorupChat = async (req, res) => {
         }
     }
 
+    export const getChatById = async (req, res) => {
+        try{
+        const { chatId } = req.params;
+        const chat = await Chat.findById(chatId).populate('participants', '-password');
+        res.status(200).json(chat);
+        } catch (error) {
+            console.error('Error in getChatById:', error);
+            res.status(500).json({ message: 'Internal server error' });
+        }
+      }
+
+
     export const sendMessage = async (req, res) => {
         const { chatId, content } = req.body;
 
@@ -122,9 +134,20 @@ export const getChatMessages = async (req, res) => {
   }
 
   try {
+    // Populate sender with avatar, name, email
+    // Also populate chat.participants with avatar, name, email
     const messages = await Message.find({ chat: chatId })
-      .populate('sender', 'name email')
-      .populate('chat')
+      .populate({
+        path: 'sender',
+        select: 'name email avatar'
+      })
+      .populate({
+        path: 'chat',
+        populate: {
+          path: 'participants',
+          select: 'name email avatar'
+        }
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json(messages);
