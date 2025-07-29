@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getMessagesByChatId, sendMessage } from '../../services/chatService.js';
 import { io } from 'socket.io-client';
+import { useNotification } from '../../contexts/notificationContext.jsx';
+import { toast } from 'react-toastify';
 
 const ChatWindow = ({ selectedChat }) => {
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
+  const { incrementUnread, resetUnread } = useNotification();
 
   const user = JSON.parse(localStorage.getItem('user'));
   const userId = user?._id || user?.id || '';
@@ -40,6 +43,7 @@ const ChatWindow = ({ selectedChat }) => {
   useEffect(() => {
     if (selectedChat?._id && socket) {
       socket.emit('join-chat', selectedChat._id);
+      resetUnread(selectedChat._id); // ✅ Reset unread count on open
       console.log('🔗 joined room:', selectedChat._id);
     }
   }, [selectedChat, socket]);
@@ -66,17 +70,16 @@ const ChatWindow = ({ selectedChat }) => {
 
     const handleIncoming = (newMsg) => {
       const incomingChatId = newMsg?.chat?._id || newMsg?.chatId;
+      const isMine = newMsg?.sender?._id === userId;
+
       if (incomingChatId === selectedChat?._id) {
-        // Check if message already exists to prevent duplicates
         setMessages((prev) => {
           const messageExists = prev.some(msg => msg._id === newMsg._id);
-          if (messageExists) {
-            return prev; // Don't add if already exists
-          }
-          return [...prev, newMsg];
+          return messageExists ? prev : [...prev, newMsg];
         });
-      } else {
-        console.log('🔔 Incoming message for other chat:', incomingChatId);
+      } else if (!isMine) {
+        incrementUnread(incomingChatId);
+        toast.info(`📩 New message from ${newMsg.sender?.username || 'someone'}`);
       }
     };
 
@@ -93,8 +96,6 @@ const ChatWindow = ({ selectedChat }) => {
         chatId: selectedChat._id,
       });
 
-      // Don't add message locally since it will come back via socket
-      // setMessages((prev) => [...prev, newMsg]); // Removed this line
       socket.emit('new-message', newMsg);
       setMessageInput('');
     } catch (err) {
@@ -102,7 +103,6 @@ const ChatWindow = ({ selectedChat }) => {
     }
   };
 
-  // Theme styles
   const theme = {
     bgMain: 'bg-gray-900',
     bgHeader: 'bg-gray-800',

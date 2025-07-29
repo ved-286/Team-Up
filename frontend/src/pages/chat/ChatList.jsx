@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNotification } from '../../contexts/notificationContext';
 
 const getAvatar = (chat, userId) => {
   if (chat.isGroupChat) {
@@ -24,9 +25,10 @@ const formatTime = (dateStr) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const ChatList = ({ chats, onSelectChat, selectedChat, unreadCounts = {} }) => {
+const ChatList = ({ chats, onSelectChat, selectedChat }) => {
   const [search, setSearch] = useState('');
-  // Parse user info from localStorage and get userId
+  const { unreadCounts } = useNotification(); // ✅ Get unread counts from context
+
   let userId = '';
   try {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -34,7 +36,6 @@ const ChatList = ({ chats, onSelectChat, selectedChat, unreadCounts = {} }) => {
   } catch {
     userId = localStorage.getItem('userId') || '';
   }
-
 
   const filteredChats = chats.filter((chat) => {
     if (chat.isGroupChat) return chat.name.toLowerCase().includes(search.toLowerCase());
@@ -58,25 +59,24 @@ const ChatList = ({ chats, onSelectChat, selectedChat, unreadCounts = {} }) => {
           <div className="text-gray-500 text-center mt-8">No chats found</div>
         )}
         {filteredChats.map((chat) => {
-          // Always get the other participant for private chats
           let displayName = '';
           let avatarUrl = '';
           let other = null;
+
           if (chat.isGroupChat) {
             displayName = chat.name;
             avatarUrl = undefined;
           } else {
-            // Try to find the other participant
             if (chat.participants.length === 2) {
               other = chat.participants.find((u) => String(u._id) !== String(userId));
             }
-            // Fallback: if only one participant, use that
             if (!other && chat.participants.length === 1) {
               other = chat.participants[0];
             }
             displayName = other?.username || other?.name || other?.email || 'User';
             avatarUrl = other?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${other?.email || 'user'}`;
           }
+
           return (
             <div
               key={chat._id}
@@ -99,22 +99,18 @@ const ChatList = ({ chats, onSelectChat, selectedChat, unreadCounts = {} }) => {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold truncate text-gray-100">
-                    {displayName}
-                  </span>
-                  <span className="text-xs text-gray-400 ml-2">
-                    {formatTime(chat.updatedAt)}
-                  </span>
+                  <span className="font-semibold truncate text-gray-100">{displayName}</span>
+                  <span className="text-xs text-gray-400 ml-2">{formatTime(chat.updatedAt)}</span>
                 </div>
                 <div className="text-sm text-gray-400 truncate">
                   {chat.latestMessage?.content
-                    ? (chat.latestMessage.content.length > 30
-                        ? chat.latestMessage.content.slice(0, 30) + '...'
-                        : chat.latestMessage.content)
+                    ? chat.latestMessage.content.length > 30
+                      ? chat.latestMessage.content.slice(0, 30) + '...'
+                      : chat.latestMessage.content
                     : 'No messages yet'}
                 </div>
               </div>
-              {/* Unread badge */}
+              {/* ✅ Unread Notification Badge */}
               {unreadCounts[chat._id] > 0 && (
                 <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
                   {unreadCounts[chat._id] > 9 ? '9+' : unreadCounts[chat._id]}
