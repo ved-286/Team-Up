@@ -29,9 +29,29 @@ const io = new Server(server, {
 app.get('/', (req, res) => res.send('API is running...'));
 
 io.on("connection", (socket) => {
-    console.log("A user connected",socket.id);
+    console.log("A user connected", socket.id);
+    
+    socket.on("join-chat", (chatId) => {
+      socket.join(chatId);
+      console.log(`User ${socket.id} joined chat room: ${chatId}`);
+      // Log current rooms for this socket
+      console.log(`Socket ${socket.id} rooms:`, Array.from(socket.rooms));
+    });
+
+    socket.on("new-message", (message) => {
+      const chatId = message?.chat?._id || message?.chatId;
+      console.log(`Received new-message from ${socket.id}:`, message);
+      if (!chatId) {
+        console.warn("new-message received without chatId/chat._id", message);
+        return;
+      }
+      // Log all sockets in the room
+      const roomSockets = io.sockets.adapter.rooms.get(chatId);
+      console.log(`Emitting message-received to room ${chatId}. Sockets in room:`, roomSockets ? Array.from(roomSockets) : []);
+      io.to(chatId).emit("message-received", message);
+    });
     socket.on("disconnect", () => {
-        console.log("A user disconnected",socket.id);
+        console.log("A user disconnected", socket.id);
     });
 }); 
 
@@ -52,6 +72,7 @@ server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
+//i want tolearn about dsa in javascript.....so this is my last chance........
 
 
 

@@ -40,3 +40,14 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Hide scrollbar utility for chat message section */
+.hide-scrollbar {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE 10+ */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important; /* Chrome/Safari/Webkit */
+  width: 0 !important;
+  height: 0 !important;
+}

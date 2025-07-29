@@ -3,9 +3,9 @@ import { getAllChats } from '../../services/chatService';
 import ChatList from '../chat/ChatList';
 import ChatWindow from '../chat/ChatWindow';
 
-const Chat = () => {
+const Chat = ({ unreadCounts, selectedChat, setSelectedChat }) => {
   const [chats, setChats] = useState([]);
-  const [selectedChat, setSelectedChat] = useState(null);
+  // Remove local selectedChat state
 
   useEffect(() => {
     fetchChats();
@@ -22,7 +22,7 @@ const Chat = () => {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <ChatList chats={chats} onSelectChat={setSelectedChat} selectedChat={selectedChat} />
+      <ChatList chats={chats} onSelectChat={setSelectedChat} selectedChat={selectedChat} unreadCounts={unreadCounts} />
       <ChatWindow selectedChat={selectedChat} />
     </div>
   );

@@ -24,7 +24,7 @@ const formatTime = (dateStr) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const ChatList = ({ chats, onSelectChat, selectedChat }) => {
+const ChatList = ({ chats, onSelectChat, selectedChat, unreadCounts = {} }) => {
   const [search, setSearch] = useState('');
   // Parse user info from localStorage and get userId
   let userId = '';
@@ -114,6 +114,12 @@ const ChatList = ({ chats, onSelectChat, selectedChat }) => {
                     : 'No messages yet'}
                 </div>
               </div>
+              {/* Unread badge */}
+              {unreadCounts[chat._id] > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                  {unreadCounts[chat._id] > 9 ? '9+' : unreadCounts[chat._id]}
+                </span>
+              )}
             </div>
           );
         })}
