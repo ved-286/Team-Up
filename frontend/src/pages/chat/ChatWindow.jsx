@@ -8,7 +8,10 @@ const ChatWindow = ({ selectedChat }) => {
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   const [socket, setSocket] = useState(null);
+  const [typingUsers, setTypingUsers] = useState(new Set());
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
   const { incrementUnread, resetUnread } = useNotification();
 
   const user = JSON.parse(localStorage.getItem('user'));
@@ -25,9 +28,11 @@ const ChatWindow = ({ selectedChat }) => {
 
     newSocket.on("connect", () => {
       console.log("✅ Socket connected:", newSocket.id);
+      console.log("🔗 Socket ready to join rooms");
     });
 
     return () => {
+      console.log("🔌 Disconnecting socket:", newSocket.id);
       newSocket.disconnect();
     };
   }, []);
@@ -42,9 +47,20 @@ const ChatWindow = ({ selectedChat }) => {
   // Join chat room on selection
   useEffect(() => {
     if (selectedChat?._id && socket) {
+      console.log('🔗 Attempting to join room:', selectedChat._id);
+      console.log('🔗 Socket connected:', socket.connected);
+      console.log('🔗 Socket ID:', socket.id);
+      
       socket.emit('join-chat', selectedChat._id);
       resetUnread(selectedChat._id); // ✅ Reset unread count on open
-      console.log('🔗 joined room:', selectedChat._id);
+      console.log('✅ Joined room:', selectedChat._id);
+    } else {
+      console.log('❌ Cannot join room:', {
+        hasSelectedChat: !!selectedChat?._id,
+        hasSocket: !!socket,
+        selectedChatId: selectedChat?._id,
+        socketConnected: socket?.connected
+      });
     }
   }, [selectedChat, socket]);
 
@@ -87,9 +103,123 @@ const ChatWindow = ({ selectedChat }) => {
     return () => socket.off('message-received', handleIncoming);
   }, [selectedChat, socket]);
 
+  // Listen for typing events
+  // 🧠 Typing indicator socket listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTyping = ({ chatId, userId: typingUserId }) => {
+      console.log("📝 Frontend received typing event:", { chatId, typingUserId, currentUserId: userId, selectedChatId: selectedChat?._id });
+      
+      if (
+        chatId === selectedChat?._id &&
+        typingUserId !== userId
+      ) {
+        console.log("✅ Adding typing user:", typingUserId);
+        setTypingUsers((prev) => {
+          const newSet = new Set(prev).add(typingUserId);
+          console.log("👥 Updated typing users:", Array.from(newSet));
+          return newSet;
+        });
+      } else {
+        console.log("❌ Typing event ignored:", {
+          chatIdMatch: chatId === selectedChat?._id,
+          userIdMatch: typingUserId !== userId,
+          chatId,
+          typingUserId,
+          selectedChatId: selectedChat?._id,
+          currentUserId: userId
+        });
+      }
+    };
+
+    const handleStopTyping = ({ chatId, userId: typingUserId }) => {
+      console.log("🛑 Frontend received stop-typing event:", { chatId, typingUserId, currentUserId: userId, selectedChatId: selectedChat?._id });
+      
+      if (
+        chatId === selectedChat?._id &&
+        typingUserId !== userId
+      ) {
+        console.log("✅ Removing typing user:", typingUserId);
+        setTypingUsers((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(typingUserId);
+          console.log("👥 Updated typing users:", Array.from(newSet));
+          return newSet;
+        });
+      } else {
+        console.log("❌ Stop-typing event ignored:", {
+          chatIdMatch: chatId === selectedChat?._id,
+          userIdMatch: typingUserId !== userId,
+          chatId,
+          typingUserId,
+          selectedChatId: selectedChat?._id,
+          currentUserId: userId
+        });
+      }
+    };
+
+    socket.on('typing', handleTyping);
+    socket.on('stop-typing', handleStopTyping);
+
+    return () => {
+      socket.off('typing', handleTyping);
+      socket.off('stop-typing', handleStopTyping);
+    };
+  }, [socket, selectedChat?._id, userId]);
+
+  // Handle typing indicator
+  // ✏️ Emit typing
+  const handleInputChange = (e) => {
+    setMessageInput(e.target.value);
+
+    if (!isTyping && selectedChat?._id) {
+      console.log("✏️ Starting typing indicator for chat:", selectedChat._id);
+      setIsTyping(true);
+      socket.emit('typing', {
+        chatId: selectedChat._id,
+        userId: userId,
+      });
+      console.log("📤 Emitted typing event:", { chatId: selectedChat._id, userId });
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTyping && selectedChat?._id) {
+        console.log("⏰ Stopping typing indicator (timeout) for chat:", selectedChat._id);
+        setIsTyping(false);
+        socket.emit('stop-typing', {
+          chatId: selectedChat._id,
+          userId: userId,
+        });
+        console.log("📤 Emitted stop-typing event:", { chatId: selectedChat._id, userId });
+      }
+    }, 3000); // Increased from 1000ms to 3000ms for better testing
+  };
   // Send message to backend + socket
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !socket) return;
+    
+    // Stop typing indicator when sending message
+    if (isTyping && selectedChat?._id) {
+      console.log("📤 Stopping typing indicator (sending message) for chat:", selectedChat._id);
+      setIsTyping(false);
+      socket.emit('stop-typing', {
+        chatId: selectedChat._id,
+        userId: userId,
+      });
+      console.log("📤 Emitted stop-typing event (send message):", { chatId: selectedChat._id, userId });
+    }
+    
+    // Clear typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      console.log("🧹 Cleared typing timeout");
+    }
+    
     try {
       const newMsg = await sendMessage(selectedChat._id, {
         content: messageInput,
@@ -98,10 +228,30 @@ const ChatWindow = ({ selectedChat }) => {
 
       socket.emit('new-message', newMsg);
       setMessageInput('');
+      console.log("✅ Message sent successfully");
     } catch (err) {
       console.error('❌ Failed to send message:', err);
     }
   };
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Debug typing users state
+  useEffect(() => {
+    console.log("🔍 Typing users state changed:", {
+      size: typingUsers.size,
+      users: Array.from(typingUsers),
+      selectedChatId: selectedChat?._id,
+      currentUserId: userId
+    });
+  }, [typingUsers, selectedChat?._id, userId]);
 
   const theme = {
     bgMain: 'bg-gray-900',
@@ -188,6 +338,25 @@ const ChatWindow = ({ selectedChat }) => {
             <div ref={messagesEndRef} />
           </>
         )}
+        
+        {/* Typing Indicator */}
+        {typingUsers.size > 0 && (
+          <div className="flex items-center gap-2 px-4 py-2">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+            <span className={`text-sm ${theme.textSecondary}`}>
+              {typingUsers.size === 1 ? 'Someone is typing...' : `${typingUsers.size} people are typing...`}
+            </span>
+          </div>
+        )}
+        
+        {/* Debug Info - Remove this after testing */}
+        {/* <div className="px-4 py-2 text-xs text-gray-500">
+          Debug: typingUsers.size = {typingUsers.size}, users: {Array.from(typingUsers).join(', ')}
+        </div> */}
       </div>
 
       {/* Input */}
@@ -198,7 +367,7 @@ const ChatWindow = ({ selectedChat }) => {
             placeholder="Type a message..."
             className={`flex-1 ${theme.input} rounded-full px-4 py-2 text-sm outline-none`}
             value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
           />
           <button

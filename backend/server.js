@@ -28,6 +28,10 @@ const io = new Server(server, {
 
 app.get('/', (req, res) => res.send('API is running...'));
 
+
+const socketToUserMap = new Map(); // socket.id => userId
+const userToSocketMap = new Map(); // userId => socket.id
+
 io.on("connection", (socket) => {
     console.log("A user connected", socket.id);
     
@@ -40,7 +44,6 @@ io.on("connection", (socket) => {
 
     socket.on("new-message", (message) => {
       const chatId = message?.chat?._id || message?.chatId;
-      console.log(`Received new-message from ${socket.id}:`, message);
       if (!chatId) {
         console.warn("new-message received without chatId/chat._id", message);
         return;
@@ -50,6 +53,36 @@ io.on("connection", (socket) => {
       console.log(`Emitting message-received to room ${chatId}. Sockets in room:`, roomSockets ? Array.from(roomSockets) : []);
       io.to(chatId).emit("message-received", message);
     });
+
+    socket.on("setup-user", (userId) => {
+      socketToUserMap.set(socket.id, userId);
+      userToSocketMap.set(userId, socket.id);
+      console.log(`Mapped user ${userId} to socket ${socket.id}`);
+    });
+
+    socket.on("typing", (data) => {
+      const { chatId, userId } = data;
+      
+      if (!chatId) {
+        console.warn("Typing event missing chatId:", data);
+        return;
+      }
+      
+      socket.to(chatId).emit("typing", { chatId, userId });
+    });
+
+    socket.on("stop-typing", (data) => {
+      const { chatId, userId } = data;
+      
+      if (!chatId) {
+        console.warn("Stop typing event missing chatId:", data);
+        return;
+      }
+      
+      socket.to(chatId).emit("stop-typing", { chatId, userId });
+    });
+
+
     socket.on("disconnect", () => {
         console.log("A user disconnected", socket.id);
     });
